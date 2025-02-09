@@ -1,0 +1,95 @@
+---
+title: "Analysis of Weight Lifting Exercise Classification"
+author: "Iqbal Abdillah Suwandi"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This report presents an analysis of the Weight Lifting Exercise dataset using machine learning techniques. The goal is to classify how participants perform barbell lifts based on sensor data collected from accelerometers placed on their belt, forearm, arm, and dumbbell. The target variable, classe, represents different exercise types.
+
+#Load Libraries
+```{r}
+library(tidyverse)     
+library(caret)         
+library(randomForest)  
+library(rpart)         
+library(rpart.plot)   
+library(e1071) 
+```
+
+#Load Data
+```{r}
+# Define URLs
+train_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+# Load data
+train_data <- read.csv(url(train_url), na.strings = c("NA", ""))
+test_data <- read.csv(url(test_url), na.strings = c("NA", ""))
+```
+
+#Data Cleaning & Preprocessing
+```{r}
+# Remove columns with too many missing values
+train_data <- train_data[, colSums(is.na(train_data)) == 0]
+test_data <- test_data[, colSums(is.na(test_data)) == 0]
+
+# Remove irrelevant coloms
+train_data <- train_data[, -c(1:7)]
+test_data <- test_data[, -c(1:7)]
+
+# Convert class to factor
+train_data$classe <- as.factor(train_data$classe)
+```
+
+#Split Data for Training & Validation
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(train_data$classe, p = 0.7, list = FALSE)
+
+# Create training and validation sets
+trainSet <- train_data[trainIndex, ]
+validationSet <- train_data[-trainIndex, ]
+```
+
+#Train the Machine Learning Model
+```{r}
+set.seed(123)
+model_rf <- randomForest(classe ~ ., data = trainSet, importance = TRUE, ntree = 100)
+```
+
+#Model Evaluation
+```{r}
+predictions <- predict(model_rf, validationSet)
+conf_matrix <- confusionMatrix(predictions, validationSet$classe)
+print(conf_matrix)
+```
+
+#Features Importance
+```{r}
+varImpPlot(model_rf)
+```
+
+#Apply MOdel to Test Data
+```{r}
+final_predictions <- predict(model_rf, test_data)
+print(final_predictions)
+```
+
+#Prediciton
+```{r}
+pml_write_files = function(x) {
+  for(i in 1:length(x)) {
+    filename = paste0("problem_id_", i, ".txt")
+    write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+  }
+}
+pml_write_files(final_predictions)
+```
+
+
+This analysis successfully classified weightlifting exercises using sensor data. The Random Forest model demonstrated high accuracy, and key sensor readings were identified as important predictors.
